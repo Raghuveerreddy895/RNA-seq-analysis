@@ -1,11 +1,5 @@
-# ==========================================================
-# Differential Expression Analysis
-# Long-term vs Short-term Survival
-# ==========================================================
+#Load libraries#
 
-# ===========================
-# Load libraries
-# ===========================
 library(DESeq2)
 library(dplyr)
 library(tibble)
@@ -16,12 +10,11 @@ library(ComplexHeatmap)
 library(InteractiveComplexHeatmap)
 library(htmlwidgets)
 
-# ==========================================================
-# 1. Read Counts
-# ==========================================================
+
+#1. Read Counts#
 
 counts_raw <- read.csv(
-  "C:/Users/raghu/Downloads/Meta-analysis MSMF/RNA_Primary/Counts_primary.csv",
+  "<input-path>/Counts.csv",
   stringsAsFactors = FALSE,
   check.names = FALSE
 )
@@ -41,15 +34,15 @@ rownames(counts_matrix) <- rownames(counts_raw)
 
 mode(counts_matrix) <- "integer"
 
-# Remove duplicate genes if present
+#Remove duplicate genes if present
 counts_matrix <- counts_matrix[!duplicated(rownames(counts_matrix)), ]
 
-# ==========================================================
-# 2. Read Metadata
-# ==========================================================
+
+#2. Read Metadata
+
 
 metadata <- read.csv(
-  "C:/Users/raghu/Downloads/Meta-analysis MSMF/RNA_Primary/Metadata_primary.csv",
+  "<input-path>/Metadata.csv",
   stringsAsFactors = FALSE
 )
 
@@ -66,14 +59,14 @@ counts_matrix <- counts_matrix[, metadata$ID]
 
 metadata$Survival <- factor(
   metadata$Survival,
-  levels = c("Long term","Short term")
+  levels = c("Long term","Short term") #Update according to the condition#
 )
 
 stopifnot(all(colnames(counts_matrix) == metadata$ID))
 
-# ==========================================================
-# 3. DESeq2
-# ==========================================================
+
+#3. DESeq2
+
 
 dds <- DESeqDataSetFromMatrix(
   countData = counts_matrix,
@@ -92,13 +85,13 @@ res <- results(
   contrast = c(
     "Survival",
     "Short term",
-    "Long term"
+    "Long term"                   #Update according to the condition#
   )
 )
 
-# ==========================================================
-# 4. Convert Results
-# ==========================================================
+
+#4. Convert Results
+
 
 res_df <- as.data.frame(res)
 
@@ -113,9 +106,9 @@ res_df$ensembl_clean <- sub(
   res_df$Geneid
 )
 
-# ==========================================================
-# 5. Connect to Ensembl
-# ==========================================================
+
+#5. Connect to Ensembl
+
 
 cat("Connecting to Ensembl...\n")
 
@@ -135,9 +128,9 @@ annotations <- getBM(
   mart = ensembl
 )
 
-# ==========================================================
-# 6. Merge Annotation
-# ==========================================================
+
+#6. Merge Annotation
+
 
 res_annotated <-
   dplyr::left_join(
@@ -164,11 +157,11 @@ res_annotated <-
         
         padj < 0.05 &
           log2FoldChange > 1
-        ~ "Upregulated (Short term)",
+        ~ "Upregulated ",
         
         padj < 0.05 &
           log2FoldChange < -1
-        ~ "Downregulated (Short term)",
+        ~ "Downregulated ",
         
         TRUE
         ~ "Not Significant"
@@ -204,9 +197,9 @@ write.csv(
 
 cat("Annotation completed.\n")
 
-# ==========================================================
-# 7. Volcano Plot
-# ==========================================================
+
+#7. Volcano Plot
+
 
 plot_data <- res_annotated[
   !is.na(res_annotated$padj),
@@ -244,9 +237,9 @@ volcano <-
     
     values = c(
       
-      "Upregulated (Short term)"="red",
+      "Upregulated "="red",
       
-      "Downregulated (Short term)"="blue",
+      "Downregulated "="blue",
       
       "Not Significant"="grey70"
       
@@ -277,9 +270,9 @@ htmlwidgets::saveWidget(
   selfcontained = TRUE
 )
 
-# ==========================================================
-# 8. Heatmap of Top 50 DEGs
-# ==========================================================
+
+#8. Heatmap of Top 50 DEGs
+
 
 vsd <- vst(dds)
 
@@ -303,11 +296,11 @@ Heatmap(
 )
 
 cat("\nFinished Successfully!\n")
-# ==========================================================
-# 9. Export Upregulated and Downregulated Genes
-# ==========================================================
 
-# Significant upregulated genes (Short term > Long term)
+#9. Export Upregulated and Downregulated Genes
+
+
+#Significant upregulated genes (Short term > Long term)
 upregulated_genes <- res_annotated %>%
   dplyr::filter(
     !is.na(padj),
@@ -316,7 +309,7 @@ upregulated_genes <- res_annotated %>%
   ) %>%
   dplyr::arrange(padj, dplyr::desc(log2FoldChange))
 
-# Significant downregulated genes (Short term < Long term)
+#Significant downregulated genes (Short term < Long term)
 downregulated_genes <- res_annotated %>%
   dplyr::filter(
     !is.na(padj),
@@ -325,7 +318,7 @@ downregulated_genes <- res_annotated %>%
   ) %>%
   dplyr::arrange(padj, log2FoldChange)
 
-# Save CSV files
+#Save CSV files
 write.csv(
   upregulated_genes,
   "Upregulated_Genes_ShortTerm_vs_LongTerm.csv",
@@ -340,7 +333,7 @@ write.csv(
 
 library(dplyr)
 
-# 1. First, define the Status column properly in your main dataset
+#1. First, define the Status column properly in your main dataset
 res_annotated <- res_annotated %>%
   mutate(
     Status = case_when(
@@ -350,18 +343,18 @@ res_annotated <- res_annotated %>%
     )
   )
 
-# 2. Now run your Top 50 Upregulated extraction (This will work perfectly now!)
+#2. Now run your Top 50 Upregulated extraction
 top_50_upregulated <- res_annotated %>%
   dplyr::filter(Status == "Upregulated") %>%
   dplyr::arrange(padj) %>%
   head(50)
 
-# 3. Pull the Top 50 Downregulated extraction
+#3. Pull the Top 50 Downregulated extraction
 top_50_downregulated <- res_annotated %>%
   dplyr::filter(Status == "Downregulated") %>%
   dplyr::arrange(padj) %>%
   head(50)
 
-# 4. Save your top 50 lists safely to CSV files
+#4. Save your top 50 lists safely to CSV files
 write.csv(top_50_upregulated, "Top_50_Upregulated_Genes.csv", row.names = FALSE)
 write.csv(top_50_downregulated, "Top_50_Downregulated_Genes.csv", row.names = FALSE)
